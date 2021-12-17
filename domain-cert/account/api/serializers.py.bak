@@ -1,0 +1,80 @@
+from rest_framework import serializers
+from ..models import Role,Structure,User 
+
+class RoleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Role
+        fields = '__all__' 
+        # fields = ('id', 'title', 'content', 'last_modify_date', 'created')
+
+class StructureSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Structure
+        fields = '__all__' 
+
+class StructureSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Structure
+        fields = '__all__' 
+
+class UserSerializer(serializers.ModelSerializer):
+    # 注册功能，需要的字段
+    # username，password，re_password，mobile
+    # 这个字段在表中没有，写成write_only=True
+    re_password = serializers.CharField(max_length=18, min_length=3, required=True, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'password', 'mobile', 're_password', 'icon']
+        extra_kwargs = {
+            'username': {'max_length': 12, 'min_length': 3},
+            'password': {'write_only': True},
+            'icon': {'read_only': True}
+        }
+        # 写mobile的局部钩子
+
+    def validate_mobile(self, data):
+        if len(data) == 11:
+            return data
+        else:
+            raise ValidationError('手机号不合法')
+
+        # 全局钩子校验两次密码是否一致
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        re_password = attrs.get('re_password')
+        if password == re_password:
+            # re_password不存数据库，剔除
+            attrs.pop('re_password')
+            return attrs
+        else:
+            raise ValidationError('两次密码不一致')
+
+    ## 重写create方法，实现密码的加密
+    #序列化类要重写create方法，不然密码就是明文了
+    def create(self, validated_data):
+        # re_password也可也在这里移除
+        # UserInfo.objects.create(**validated_data) # 密码是明文
+        user = UserInfo.objects.create_user(**validated_data)
+        return user  # 注意不要忘了这句话
+
+
+# 序列化的时候后
+# 一个模型类，不一定对着一个序列化类
+# 只做序列化用
+class UserReadOnlyModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserInfo
+        fields = ['username', 'mobile', 'icon', 'email', 'date_joined']
+
+
+# 这个序列化类，只做修改头像用
+class UserIconModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserInfo
+        fields = ['icon', ]
+
